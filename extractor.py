@@ -75,12 +75,15 @@ def _build_ytt():
                 http_url=PROXY_URL,
                 https_url=PROXY_URL,
             )
+            print(f"[프록시] GenericProxyConfig 적용: {PROXY_URL[:30]}...")
             return YouTubeTranscriptApi(proxy_config=proxy_config)
-        except ImportError:
-            # 구버전 호환: 환경변수로 프록시 설정
+        except Exception as e:
+            # GenericProxyConfig 실패 시 환경변수 fallback
+            print(f"[프록시] GenericProxyConfig 실패({type(e).__name__}), 환경변수로 대체")
             os.environ["HTTP_PROXY"] = PROXY_URL
             os.environ["HTTPS_PROXY"] = PROXY_URL
             return YouTubeTranscriptApi()
+    print("[프록시] 프록시 없이 직접 연결")
     return YouTubeTranscriptApi()
 
 
