@@ -50,8 +50,8 @@ def get_video_info(video_id: str) -> dict:
             "duration": data.get("duration", 0),
             "view_count": data.get("view_count", 0),
         }
-    except FileNotFoundError:
-        # yt-dlp 없으면 기본 정보만 반환
+    except Exception:
+        # yt-dlp 실패(미설치, JS 런타임 없음 등) → 기본 정보만 반환
         return {
             "title": "",
             "channel": "",
