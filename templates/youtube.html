@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
+<title>K1 유튜브 레시피 추출기</title>
+<style>
+  :root {
+    --primary: #e84e1b;
+    --primary-light: #ff6b3d;
+    --primary-bg: #fff5f0;
+    --ink: #1a1a1a;
+    --ink-sub: #555;
+    --ink-muted: #999;
+    --border: #e5e5e5;
+    --bg: #fafafa;
+    --card: #fff;
+    --radius: 16px;
+    --shadow: 0 2px 12px rgba(0,0,0,0.08);
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+
+  /* 헤더 */
+  .header {
+    background: var(--card);
+    border-bottom: 1px solid var(--border);
+    padding: 0 24px;
+    height: 64px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .header .logo {
+    font-size: 22px;
+    font-weight: 800;
+    color: var(--primary);
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .header .logo span { font-size: 28px; }
+  .header nav a {
+    color: var(--ink-sub);
+    text-decoration: none;
+    font-weight: 500;
+    margin-left: 24px;
+    font-size: 15px;
+    transition: color 0.2s;
+  }
+  .header nav a:hover, .header nav a.active { color: var(--primary); }
+
+  /* 히어로 */
+  .hero {
+    text-align: center;
+    padding: 60px 24px 40px;
+  }
+  .hero .yt-icon {
+    width: 120px;
+    height: 84px;
+    margin: 0 auto 24px;
+    background: #ff0000;
+    border-radius: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 8px 32px rgba(255,0,0,0.2);
+  }
+  .hero .yt-icon::after {
+    content: '';
+    border-left: 28px solid white;
+    border-top: 16px solid transparent;
+    border-bottom: 16px solid transparent;
+    margin-left: 4px;
+  }
+  .hero h1 {
+    font-size: 32px;
+    font-weight: 800;
+    margin-bottom: 8px;
+  }
+  .hero h1 .badge {
+    display: inline-block;
+    background: var(--primary-bg);
+    color: var(--primary);
+    font-size: 13px;
+    padding: 2px 10px;
+    border-radius: 20px;
+    vertical-align: middle;
+    margin-left: 8px;
+    font-weight: 600;
+  }
+  .hero p {
+    color: var(--ink-sub);
+    font-size: 16px;
+    max-width: 480px;
+    margin: 0 auto;
+  }
+  .hero p strong { color: var(--primary); }
+
+  /* 입력 바 */
+  .input-section {
+    max-width: 680px;
+    margin: 0 auto 48px;
+    padding: 0 24px;
+  }
+  .input-bar {
+    display: flex;
+    align-items: center;
+    background: var(--card);
+    border: 2px solid var(--border);
+    border-radius: 60px;
+    padding: 6px 6px 6px 24px;
+    box-shadow: var(--shadow);
+    transition: border-color 0.3s;
+  }
+  .input-bar:focus-within { border-color: var(--primary); }
+  .input-bar .icon { font-size: 20px; color: var(--ink-muted); margin-right: 12px; }
+  .input-bar input {
+    flex: 1;
+    border: none;
+    outline: none;
+    font-size: 16px;
+    background: transparent;
+    color: var(--ink);
+    min-width: 0;
+  }
+  .input-bar input::placeholder { color: var(--ink-muted); }
+  .input-bar button {
+    background: var(--primary);
+    color: white;
+    border: none;
+    border-radius: 50px;
+    padding: 12px 28px;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.2s;
+    white-space: nowrap;
+  }
+  .input-bar button:hover { background: var(--primary-light); }
+  .input-bar button:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+  }
+
+  /* 로딩 */
+  .loading {
+    display: none;
+    text-align: center;
+    padding: 60px 24px;
+  }
+  .loading.active { display: block; }
+  .spinner {
+    width: 48px;
+    height: 48px;
+    border: 4px solid var(--border);
+    border-top-color: var(--primary);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin: 0 auto 16px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading p { color: var(--ink-sub); font-size: 15px; }
+  .loading .step-text {
+    color: var(--ink-muted);
+    font-size: 13px;
+    margin-top: 8px;
+  }
+
+  /* 에러 */
+  .error-msg {
+    display: none;
+    max-width: 680px;
+    margin: 0 auto 32px;
+    padding: 16px 24px;
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    border-radius: 12px;
+    color: #dc2626;
+    font-size: 14px;
+  }
+  .error-msg.active { display: block; }
+
+  /* 결과 영역 */
+  .result {
+    display: none;
+    max-width: 880px;
+    margin: 0 auto;
+    padding: 0 24px 80px;
+  }
+  .result.active { display: block; }
+
+  /* 영상 + 제목 */
+  .video-section {
+    background: var(--card);
+    border-radius: var(--radius);
+    overflow: hidden;
+    box-shadow: var(--shadow);
+    margin-bottom: 24px;
+  }
+  .video-embed {
+    position: relative;
+    padding-bottom: 56.25%;
+    height: 0;
+    background: #000;
+  }
+  .video-embed iframe {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%;
+    height: 100%;
+    border: none;
+  }
+  .video-meta {
+    padding: 20px 24px;
+  }
+  .video-meta .rating { color: #f59e0b; font-size: 18px; margin-bottom: 8px; }
+  .video-meta h2 { font-size: 24px; font-weight: 800; margin-bottom: 4px; }
+  .video-meta .channel {
+    color: var(--ink-sub);
+    font-size: 14px;
+    margin-bottom: 12px;
+  }
+  .video-meta .meta-pills {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  .video-meta .pill {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 14px;
+    color: var(--ink-sub);
+  }
+  .video-meta .pill .icon { font-size: 16px; }
+
+  /* 탭 네비 */
+  .tabs {
+    display: flex;
+    border-bottom: 2px solid var(--border);
+    margin-bottom: 24px;
+    background: var(--card);
+    border-radius: var(--radius) var(--radius) 0 0;
+    overflow-x: auto;
+  }
+  .tabs button {
+    flex: 1;
+    padding: 16px 20px;
+    border: none;
+    background: transparent;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--ink-muted);
+    cursor: pointer;
+    border-bottom: 3px solid transparent;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+  .tabs button.active {
+    color: var(--primary);
+    border-bottom-color: var(--primary);
+  }
+  .tabs button:hover { color: var(--ink); }
+
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+
+  /* 재료 표 */
+  .ingredients-card {
+    background: var(--card);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+  }
+  .ingredients-card .card-header {
+    padding: 20px 24px 12px;
+    font-size: 18px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .ingredient-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  .ingredient-table tr { border-bottom: 1px solid #f0f0f0; }
+  .ingredient-table tr:last-child { border: none; }
+  .ingredient-table td {
+    padding: 14px 24px;
+    font-size: 15px;
+  }
+  .ingredient-table td:first-child { color: var(--ink); font-weight: 500; }
+  .ingredient-table td:last-child {
+    text-align: right;
+    color: var(--ink-sub);
+    font-weight: 500;
+  }
+  .ingredient-table tr:nth-child(even) { background: #fafafa; }
+
+  /* 조리 단계 */
+  .steps-list { display: flex; flex-direction: column; gap: 16px; }
+  .step-card {
+    background: var(--card);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+    transition: transform 0.2s;
+  }
+  .step-card:hover { transform: translateY(-2px); }
+  .step-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 24px;
+    background: #fafafa;
+    border-bottom: 1px solid #f0f0f0;
+  }
+  .step-badge {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .step-number {
+    background: var(--primary);
+    color: white;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    font-weight: 700;
+  }
+  .step-counter {
+    font-size: 14px;
+    color: var(--ink-sub);
+    font-weight: 600;
+  }
+  .step-timestamp {
+    background: var(--primary-bg);
+    color: var(--primary);
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    transition: background 0.2s;
+  }
+  .step-timestamp:hover {
+    background: var(--primary);
+    color: white;
+  }
+  .step-body {
+    padding: 16px 24px;
+  }
+  .step-title {
+    font-size: 16px;
+    font-weight: 700;
+    margin-bottom: 6px;
+    color: var(--ink);
+  }
+  .step-desc {
+    font-size: 14px;
+    color: var(--ink-sub);
+    line-height: 1.7;
+  }
+
+  /* 팁 */
+  .tips-card {
+    background: #fffbeb;
+    border: 1px solid #fde68a;
+    border-radius: var(--radius);
+    padding: 20px 24px;
+  }
+  .tips-card h3 {
+    font-size: 16px;
+    font-weight: 700;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .tips-card ul {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .tips-card li {
+    padding-left: 20px;
+    position: relative;
+    font-size: 14px;
+    color: var(--ink-sub);
+  }
+  .tips-card li::before {
+    content: '💡';
+    position: absolute;
+    left: 0;
+  }
+
+  /* JSON 내보내기 */
+  .export-section {
+    margin-top: 24px;
+    text-align: center;
+  }
+  .export-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 28px;
+    border: 2px solid var(--border);
+    border-radius: 12px;
+    background: var(--card);
+    color: var(--ink);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .export-btn:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+  }
+
+  /* 반응형 */
+  @media (max-width: 640px) {
+    .hero { padding: 40px 16px 24px; }
+    .hero h1 { font-size: 24px; }
+    .hero .yt-icon { width: 80px; height: 56px; border-radius: 14px; }
+    .hero .yt-icon::after { border-left-width: 20px; border-top-width: 12px; border-bottom-width: 12px; }
+    .input-bar { padding: 4px 4px 4px 16px; }
+    .input-bar button { padding: 10px 18px; font-size: 14px; }
+    .video-meta h2 { font-size: 20px; }
+    .step-body { padding: 12px 16px; }
+    .ingredient-table td { padding: 12px 16px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- 헤더 -->
+<header class="header">
+  <a class="logo" href="/">
+    <span>🍳</span> K1 Recipe
+  </a>
+  <nav>
+    <a href="/" class="active">유튜브 레시피</a>
+  </nav>
+</header>
+
+<!-- 히어로 + 입력 -->
+<section class="hero">
+  <div class="yt-icon"></div>
+  <h1>유튜브 레시피 가져오기 <span class="badge">Beta</span></h1>
+  <p>링크만 붙여넣으면 유튜브 레시피 추출이 자동으로 끝나요.<br>
+    <strong>영상과 레시피를 한눈에</strong> 보며 더 편하게 요리하세요.</p>
+</section>
+
+<section class="input-section">
+  <div class="input-bar">
+    <span class="icon">🔍</span>
+    <input type="text" id="urlInput" placeholder="유튜브 링크를 붙여넣으세요" autocomplete="off">
+    <button id="extractBtn" onclick="startExtract()">추출하기</button>
+  </div>
+</section>
+
+<!-- 에러 메시지 -->
+<div class="error-msg" id="errorMsg"></div>
+
+<!-- 로딩 -->
+<div class="loading" id="loading">
+  <div class="spinner"></div>
+  <p id="loadingText">레시피를 분석하고 있어요...</p>
+  <p class="step-text" id="loadingStep">자막을 가져오는 중</p>
+</div>
+
+<!-- 결과 -->
+<div class="result" id="result">
+  <!-- 영상 임베드 -->
+  <div class="video-section">
+    <div class="video-embed">
+      <iframe id="ytPlayer" src="" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+    </div>
+    <div class="video-meta">
+      <div class="rating" id="ratingStars">★★★★★</div>
+      <h2 id="recipeTitle">-</h2>
+      <div class="channel" id="channelName">-</div>
+      <div class="meta-pills">
+        <div class="pill"><span class="icon">⏱</span> <span id="metaCookTime">-</span></div>
+        <div class="pill"><span class="icon">👥</span> <span id="metaServings">-</span></div>
+        <div class="pill"><span class="icon">📊</span> <span id="metaDifficulty">-</span></div>
+        <div class="pill"><span class="icon">📝</span> 자막 <span id="metaTranscript">-</span>줄</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 탭 -->
+  <div class="tabs">
+    <button class="active" onclick="switchTab('ingredients')">🥬 재료</button>
+    <button onclick="switchTab('steps')">👨‍🍳 조리순서</button>
+    <button onclick="switchTab('tips')">💡 팁</button>
+  </div>
+
+  <!-- 재료 탭 -->
+  <div class="tab-content active" id="tab-ingredients">
+    <div class="ingredients-card">
+      <div class="card-header">🥬 재료 <span id="ingredientCount" style="color:var(--ink-muted);font-size:14px;font-weight:400"></span></div>
+      <table class="ingredient-table" id="ingredientTable">
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- 조리순서 탭 -->
+  <div class="tab-content" id="tab-steps">
+    <div class="steps-list" id="stepsList"></div>
+  </div>
+
+  <!-- 팁 탭 -->
+  <div class="tab-content" id="tab-tips">
+    <div class="tips-card" id="tipsCard">
+      <h3>💡 요리 팁</h3>
+      <ul id="tipsList"></ul>
+    </div>
+  </div>
+
+  <!-- JSON 내보내기 -->
+  <div class="export-section">
+    <button class="export-btn" onclick="exportJSON()">📋 JSON 복사 (K1 admin용)</button>
+    <button class="export-btn" onclick="downloadJSON()" style="margin-left:8px">💾 JSON 다운로드</button>
+  </div>
+</div>
+
+<script>
+// 전역 변수
+let currentData = null;
+let ytPlayerInstance = null;
+
+// 타임스탬프를 초로 변환
+function tsToSeconds(ts) {
+  const parts = ts.split(':').map(Number);
+  if (parts.length === 3) return parts[0]*3600 + parts[1]*60 + parts[2];
+  if (parts.length === 2) return parts[0]*60 + parts[1];
+  return 0;
+}
+
+// YouTube IFrame API 로드
+function loadYouTubeAPI() {
+  if (window.YT) return;
+  const tag = document.createElement('script');
+  tag.src = 'https://www.youtube.com/iframe_api';
+  document.head.appendChild(tag);
+}
+loadYouTubeAPI();
+
+// 탭 전환
+function switchTab(name) {
+  document.querySelectorAll('.tabs button').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.querySelector(`#tab-${name}`).classList.add('active');
+  // 탭 버튼 active
+  const btns = document.querySelectorAll('.tabs button');
+  const tabMap = { ingredients: 0, steps: 1, tips: 2 };
+  btns[tabMap[name]].classList.add('active');
+}
+
+// 타임스탬프 클릭 → 영상 해당 시점으로 점프
+function seekTo(ts) {
+  const seconds = tsToSeconds(ts);
+  if (ytPlayerInstance && ytPlayerInstance.seekTo) {
+    ytPlayerInstance.seekTo(seconds, true);
+    ytPlayerInstance.playVideo();
+  } else {
+    // fallback: iframe src 변경
+    const iframe = document.getElementById('ytPlayer');
+    const videoId = currentData.videoId;
+    iframe.src = `https://www.youtube.com/embed/${videoId}?start=${seconds}&autoplay=1`;
+  }
+  // 영상으로 스크롤
+  document.querySelector('.video-section').scrollIntoView({ behavior: 'smooth' });
+}
+
+// 추출 시작
+async function startExtract() {
+  const url = document.getElementById('urlInput').value.trim();
+  if (!url) {
+    showError('유튜브 링크를 입력해주세요!');
+    return;
+  }
+
+  // UI 상태 전환
+  hideError();
+  document.getElementById('result').classList.remove('active');
+  document.getElementById('loading').classList.add('active');
+  document.getElementById('extractBtn').disabled = true;
+
+  // 로딩 단계 표시
+  const steps = [
+    '영상 정보를 가져오는 중...',
+    '자막을 추출하는 중...',
+    'AI가 레시피를 분석하는 중... (10~20초)',
+    '결과를 정리하는 중...'
+  ];
+  let stepIdx = 0;
+  const stepTimer = setInterval(() => {
+    stepIdx = Math.min(stepIdx + 1, steps.length - 1);
+    document.getElementById('loadingStep').textContent = steps[stepIdx];
+  }, 4000);
+
+  try {
+    const resp = await fetch('/api/extract', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url }),
+    });
+
+    const data = await resp.json();
+    clearInterval(stepTimer);
+
+    if (!resp.ok || data.error) {
+      throw new Error(data.error || '알 수 없는 오류');
+    }
+
+    currentData = data;
+    renderResult(data);
+
+  } catch (err) {
+    clearInterval(stepTimer);
+    showError(err.message);
+  } finally {
+    document.getElementById('loading').classList.remove('active');
+    document.getElementById('extractBtn').disabled = false;
+  }
+}
+
+// 에러 표시
+function showError(msg) {
+  const el = document.getElementById('errorMsg');
+  el.textContent = '❌ ' + msg;
+  el.classList.add('active');
+}
+function hideError() {
+  document.getElementById('errorMsg').classList.remove('active');
+}
+
+// 난이도 한글 변환
+function difficultyKo(d) {
+  return { easy: '쉬움 ⭐', medium: '보통 ⭐⭐', hard: '어려움 ⭐⭐⭐' }[d] || d;
+}
+
+// 결과 렌더링
+function renderResult(data) {
+  const { videoId, videoInfo, recipe, transcriptLength } = data;
+
+  // 영상 임베드 (YouTube IFrame API 사용)
+  const playerDiv = document.getElementById('ytPlayer');
+  playerDiv.src = `https://www.youtube.com/embed/${videoId}?enablejsapi=1`;
+
+  // YT Player API 인스턴스 생성 시도
+  try {
+    if (window.YT && window.YT.Player) {
+      // 기존 iframe을 div로 교체
+      setTimeout(() => {
+        ytPlayerInstance = new YT.Player('ytPlayer', {
+          events: { onReady: () => console.log('YT Player ready') }
+        });
+      }, 1000);
+    }
+  } catch(e) { /* fallback: iframe src 변경 방식 사용 */ }
+
+  // 메타 정보
+  document.getElementById('recipeTitle').textContent = recipe.title || videoInfo.title;
+  document.getElementById('channelName').textContent = videoInfo.channel ? `📺 ${videoInfo.channel}` : '';
+  document.getElementById('metaCookTime').textContent = recipe.cookTime || '-';
+  document.getElementById('metaServings').textContent = recipe.servings || '-';
+  document.getElementById('metaDifficulty').textContent = difficultyKo(recipe.difficulty);
+  document.getElementById('metaTranscript').textContent = transcriptLength;
+
+  // 재료 테이블
+  const tbody = document.querySelector('#ingredientTable tbody');
+  tbody.innerHTML = '';
+  const ings = recipe.ingredients || [];
+  document.getElementById('ingredientCount').textContent = `(${ings.length}가지)`;
+  ings.forEach(ing => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${ing.name}</td><td>${ing.amount || ''}</td>`;
+    tbody.appendChild(tr);
+  });
+
+  // 조리 단계
+  const stepsList = document.getElementById('stepsList');
+  stepsList.innerHTML = '';
+  const steps = recipe.steps || [];
+  steps.forEach((s, i) => {
+    const card = document.createElement('div');
+    card.className = 'step-card';
+    card.innerHTML = `
+      <div class="step-header">
+        <div class="step-badge">
+          <div class="step-number">${s.step || i+1}</div>
+          <span class="step-counter">Step ${s.step || i+1}/${steps.length}</span>
+        </div>
+        ${s.timestamp ? `<button class="step-timestamp" onclick="seekTo('${s.timestamp}')">${s.timestamp}</button>` : ''}
+      </div>
+      <div class="step-body">
+        <div class="step-title">${s.title || ''}</div>
+        <div class="step-desc">${s.description || ''}</div>
+      </div>
+    `;
+    stepsList.appendChild(card);
+  });
+
+  // 팁
+  const tipsList = document.getElementById('tipsList');
+  tipsList.innerHTML = '';
+  const tips = recipe.tips || [];
+  if (tips.length === 0) {
+    tipsList.innerHTML = '<li>이 영상에서는 별도의 팁이 언급되지 않았어요.</li>';
+  } else {
+    tips.forEach(tip => {
+      const li = document.createElement('li');
+      li.textContent = tip;
+      tipsList.appendChild(li);
+    });
+  }
+
+  // 결과 표시
+  document.getElementById('result').classList.add('active');
+  switchTab('ingredients');
+
+  // 결과로 스크롤
+  document.querySelector('.video-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// JSON 내보내기 (K1 admin 형식)
+function exportJSON() {
+  if (!currentData) return;
+  const json = JSON.stringify(currentData, null, 2);
+  navigator.clipboard.writeText(json).then(() => {
+    alert('📋 JSON이 클립보드에 복사되었습니다!\nadmin.html의 "JSON 불러오기"에 붙여넣으세요.');
+  }).catch(() => {
+    // fallback
+    const ta = document.createElement('textarea');
+    ta.value = json;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    alert('📋 복사 완료!');
+  });
+}
+
+function downloadJSON() {
+  if (!currentData) return;
+  const blob = new Blob([JSON.stringify(currentData, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `recipe_${currentData.videoId}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// Enter 키로 추출
+document.getElementById('urlInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') startExtract();
+});
+</script>
+</body>
+</html>

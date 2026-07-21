@@ -1,0 +1,7 @@
+youtube-transcript-api>=1.0.0
+yt-dlp>=2024.0.0
+openai>=1.0.0
+flask>=3.0.0
+flask-cors>=6.0.0
+python-dotenv>=1.0.0
+gunicorn>=22.0.0
