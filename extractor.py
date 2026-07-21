@@ -4,11 +4,15 @@
 """
 
 import json
+import os
 import re
 import subprocess
 import sys
 from openai import OpenAI
 from youtube_transcript_api import YouTubeTranscriptApi
+
+# 프록시 설정 (Render 등 클라우드에서 유튜브 IP 차단 우회)
+PROXY_URL = os.getenv("PROXY_URL", "")
 
 
 def extract_video_id(url: str) -> str:
@@ -62,10 +66,28 @@ def get_video_info(video_id: str) -> dict:
         }
 
 
+def _build_ytt():
+    """프록시 설정이 있으면 적용한 YouTubeTranscriptApi 인스턴스를 만듭니다."""
+    if PROXY_URL:
+        try:
+            from youtube_transcript_api.proxies import GenericProxyConfig
+            proxy_config = GenericProxyConfig(
+                http_url=PROXY_URL,
+                https_url=PROXY_URL,
+            )
+            return YouTubeTranscriptApi(proxy_config=proxy_config)
+        except ImportError:
+            # 구버전 호환: 환경변수로 프록시 설정
+            os.environ["HTTP_PROXY"] = PROXY_URL
+            os.environ["HTTPS_PROXY"] = PROXY_URL
+            return YouTubeTranscriptApi()
+    return YouTubeTranscriptApi()
+
+
 def get_transcript(video_id: str) -> list[dict]:
     """유튜브 자막을 가져옵니다 (한국어 우선, 없으면 자동생성 자막).
-    youtube-transcript-api v1.x 호환."""
-    ytt = YouTubeTranscriptApi()
+    youtube-transcript-api v1.x 호환. 프록시 지원."""
+    ytt = _build_ytt()
     
     try:
         # 한국어 → 영어 → 일본어 → 중국어 순으로 시도

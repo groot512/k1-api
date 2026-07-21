@@ -74,8 +74,10 @@ if __name__ == "__main__":
         print("   (추출 API는 키 없이는 작동하지 않습니다)\n")
     
     port = int(os.getenv("PORT", 5000))
+    proxy = os.getenv("PROXY_URL", "")
     print(f"🍳 K1 Recipe Extractor 서버 시작!")
     print(f"   → http://localhost:{port}")
+    print(f"   → 프록시: {'✅ ' + proxy[:30] + '...' if proxy else '❌ 없음 (클라우드에서 유튜브 차단될 수 있음)'}")
     print(f"   → Ctrl+C 로 종료\n")
     debug = os.getenv("FLASK_DEBUG", "false").lower() in ("true", "1")
     app.run(host="0.0.0.0", debug=debug, port=port)
